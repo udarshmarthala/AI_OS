@@ -1,0 +1,16 @@
+[Unit]
+Description=AIOS agent daemon
+After=network-online.target ollama.service
+Wants=ollama.service
+
+[Service]
+Type=simple
+User=aios
+WorkingDirectory=/opt/aios/daemon
+Environment=AIOS_MODEL=qwen2.5:7b
+ExecStart=/opt/aios/daemon/.venv/bin/python -m aios_daemon
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

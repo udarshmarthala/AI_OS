@@ -1,0 +1,21 @@
+[Unit]
+Description=AIOS kiosk shell (cage + chromium)
+After=aios-daemon.service systemd-user-sessions.service
+Wants=aios-daemon.service
+Conflicts=getty@tty1.service
+
+[Service]
+Type=simple
+User=aios
+PAMName=login
+TTYPath=/dev/tty1
+StandardInput=tty
+StandardOutput=journal
+UtmpIdentifier=tty1
+ExecStartPre=/usr/bin/bash -c 'until curl -sf http://localhost:8800/ >/dev/null; do sleep 1; done'
+ExecStart=/usr/bin/cage -- /usr/bin/chromium-browser --kiosk --noerrdialogs --disable-session-crashed-bubble --app=http://localhost:8800
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=graphical.target
