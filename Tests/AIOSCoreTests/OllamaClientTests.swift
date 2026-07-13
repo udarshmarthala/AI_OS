@@ -34,14 +34,15 @@ final class MockURLProtocol: URLProtocol {
     override func stopLoading() {}
 }
 
-final class OllamaClientTests: XCTestCase {
+// .serialized because MockURLProtocol uses shared mutable statics
+@Suite(.serialized) struct OllamaClientTests {
     func makeClient() -> OllamaClient {
         let config = URLSessionConfiguration.ephemeral
         config.protocolClasses = [MockURLProtocol.self]
         return OllamaClient(model: "qwen2.5:14b", session: URLSession(configuration: config))
     }
 
-    func testStreamsContentTokens() async throws {
+    @Test func streamsContentTokens() async throws {
         MockURLProtocol.responseBody = """
         {"message":{"role":"assistant","content":"Hel"},"done":false}
         {"message":{"role":"assistant","content":"lo"},"done":false}
@@ -53,12 +54,12 @@ final class OllamaClientTests: XCTestCase {
             tools: [],
             onToken: { tokens.append($0) }
         )
-        XCTAssertEqual(reply.content, "Hello")
-        XCTAssertEqual(tokens, ["Hel", "lo"])
-        XCTAssertNil(reply.toolCalls)
+        #expect(reply.content == "Hello")
+        #expect(tokens == ["Hel", "lo"])
+        #expect(reply.toolCalls == nil)
     }
 
-    func testParsesToolCalls() async throws {
+    @Test func parsesToolCalls() async throws {
         MockURLProtocol.responseBody = """
         {"message":{"role":"assistant","content":"","tool_calls":[{"function":{"name":"app_control","arguments":{"action":"launch","name":"Safari"}}}]},"done":true}
         """
@@ -67,12 +68,12 @@ final class OllamaClientTests: XCTestCase {
             tools: [],
             onToken: { _ in }
         )
-        XCTAssertEqual(reply.toolCalls?.count, 1)
-        XCTAssertEqual(reply.toolCalls?.first?.function.name, "app_control")
-        XCTAssertEqual(reply.toolCalls?.first?.function.arguments["name"], .string("Safari"))
+        #expect(reply.toolCalls?.count == 1)
+        #expect(reply.toolCalls?.first?.function.name == "app_control")
+        #expect(reply.toolCalls?.first?.function.arguments["name"] == .string("Safari"))
     }
 
-    func testSendsToolSchemasInRequest() async throws {
+    @Test func sendsToolSchemasInRequest() async throws {
         MockURLProtocol.responseBody = #"{"message":{"role":"assistant","content":"ok"},"done":true}"#
         let spec = ToolSpec(
             name: "echo", description: "d",
@@ -84,7 +85,7 @@ final class OllamaClientTests: XCTestCase {
             onToken: { _ in }
         )
         let body = String(decoding: MockURLProtocol.lastRequestBody ?? Data(), as: UTF8.self)
-        XCTAssertTrue(body.contains(#""name":"echo""#))
-        XCTAssertTrue(body.contains(#""type":"function""#))
+        #expect(body.contains(#""name":"echo""#))
+        #expect(body.contains(#""type":"function""#))
     }
 }
