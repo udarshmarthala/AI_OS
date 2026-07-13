@@ -19,27 +19,27 @@ struct FailTool: Tool {
     func execute(_ args: [String: JSONValue]) async throws -> String { throw Boom() }
 }
 
-final class ToolRegistryTests: XCTestCase {
-    func testDispatchesToNamedTool() async {
+@Suite struct ToolRegistryTests {
+    @Test func dispatchesToNamedTool() async {
         let registry = ToolRegistry(tools: [EchoTool()])
         let result = await registry.execute(name: "echo", args: ["text": .string("hi")])
-        XCTAssertEqual(result, "echo: hi")
+        #expect(result == "echo: hi")
     }
 
-    func testUnknownToolReturnsError() async {
+    @Test func unknownToolReturnsError() async {
         let registry = ToolRegistry(tools: [])
         let result = await registry.execute(name: "nope", args: [:])
-        XCTAssertTrue(result.contains("unknown tool"))
+        #expect(result.contains("unknown tool"))
     }
 
-    func testToolErrorReturnedAsString() async {
+    @Test func toolErrorReturnedAsString() async {
         let registry = ToolRegistry(tools: [FailTool()])
         let result = await registry.execute(name: "fail", args: [:])
-        XCTAssertTrue(result.contains("boom"))
+        #expect(result.contains("boom"))
     }
 
-    func testSpecsSortedByName() {
+    @Test func specsSortedByName() {
         let registry = ToolRegistry(tools: [FailTool(), EchoTool()])
-        XCTAssertEqual(registry.specs.map(\.name), ["echo", "fail"])
+        #expect(registry.specs.map(\.name) == ["echo", "fail"])
     }
 }
