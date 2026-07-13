@@ -35,7 +35,7 @@ public struct OllamaClient: LLMClient {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try requestBody(messages: messages, tools: tools)
 
-        let (data, response) = try await session.data(for: request)
+        let (bytes, response) = try await session.bytes(for: request)
         guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
             throw ClientError(message: "Ollama returned HTTP \((response as? HTTPURLResponse)?.statusCode ?? -1)")
         }
@@ -44,10 +44,7 @@ public struct OllamaClient: LLMClient {
         var toolCalls: [ToolCall]?
         let decoder = JSONDecoder()
 
-        let rawString = String(decoding: data, as: UTF8.self)
-        let lines = rawString.components(separatedBy: "\n")
-
-        for line in lines {
+        for try await line in bytes.lines {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
             guard !trimmed.isEmpty else { continue }
             let chunk = try decoder.decode(StreamChunk.self, from: Data(trimmed.utf8))
