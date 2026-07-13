@@ -1,4 +1,5 @@
-import XCTest
+import Testing
+import Foundation
 @testable import AIOSCore
 
 final class MockURLProtocol: URLProtocol {
