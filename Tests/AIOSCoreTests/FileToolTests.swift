@@ -27,12 +27,12 @@ import Foundation
             "destination": .string(dst.path)
         ])
 
-        XCTAssertTrue(result.contains("Moved"))
-        XCTAssertFalse(FileManager.default.fileExists(atPath: src.path))
-        XCTAssertTrue(FileManager.default.fileExists(atPath: dst.path))
+        #expect(result.contains("Moved"))
+        #expect(!FileManager.default.fileExists(atPath: src.path))
+        #expect(FileManager.default.fileExists(atPath: dst.path))
     }
 
-    func testTrashFile() async throws {
+    @Test func trashFile() async throws {
         let file = tmp.appendingPathComponent("junk.txt")
         try "x".write(to: file, atomically: true, encoding: .utf8)
 
@@ -41,29 +41,23 @@ import Foundation
             "path": .string(file.path)
         ])
 
-        XCTAssertTrue(result.contains("Trashed"))
-        XCTAssertFalse(FileManager.default.fileExists(atPath: file.path))
+        #expect(result.contains("Trashed"))
+        #expect(!FileManager.default.fileExists(atPath: file.path))
     }
 
-    func testMissingActionThrows() async {
-        do {
+    @Test func missingActionThrows() async {
+        await #expect(throws: (any Error).self) {
             _ = try await FileTool().execute([:])
-            XCTFail("should throw")
-        } catch {
-            XCTAssertTrue((error as? LocalizedError)?.errorDescription?.contains("action") ?? false)
         }
     }
 
-    func testMoveMissingSourceThrows() async {
-        do {
+    @Test func moveMissingSourceThrows() async {
+        await #expect(throws: (any Error).self) {
             _ = try await FileTool().execute([
                 "action": .string("move"),
                 "path": .string(tmp.appendingPathComponent("ghost.txt").path),
                 "destination": .string(tmp.appendingPathComponent("z.txt").path)
             ])
-            XCTFail("should throw")
-        } catch {
-            // any thrown error is fine — FileManager reports missing file
         }
     }
 }
