@@ -20,22 +20,20 @@ final class MockLLM: LLMClient, @unchecked Sendable {
     }
 }
 
-final class AgentCoreTests: XCTestCase {
-    @MainActor
-    func testPlainAnswerAppendsToTranscript() async {
+@Suite struct AgentCoreTests {
+    @Test @MainActor func plainAnswerAppendsToTranscript() async {
         let llm = MockLLM(replies: [ChatMessage(role: "assistant", content: "Paris")])
         let agent = AgentCore(llm: llm, registry: ToolRegistry(tools: []))
 
         await agent.send("capital of France?")
 
-        XCTAssertEqual(agent.transcript.count, 2)
-        XCTAssertEqual(agent.transcript[0].role, .user)
-        XCTAssertEqual(agent.transcript[1].role, .assistant)
-        XCTAssertEqual(agent.transcript[1].text, "Paris")
+        #expect(agent.transcript.count == 2)
+        #expect(agent.transcript[0].role == .user)
+        #expect(agent.transcript[1].role == .assistant)
+        #expect(agent.transcript[1].text == "Paris")
     }
 
-    @MainActor
-    func testToolCallLoopExecutesAndContinues() async {
+    @Test @MainActor func toolCallLoopExecutesAndContinues() async {
         let toolCall = ToolCall(function: .init(name: "echo", arguments: ["text": .string("hi")]))
         let llm = MockLLM(replies: [
             ChatMessage(role: "assistant", content: "", toolCalls: [toolCall]),
@@ -45,14 +43,13 @@ final class AgentCoreTests: XCTestCase {
 
         await agent.send("say hi")
 
-        XCTAssertEqual(agent.transcript.last?.text, "Done: echo: hi")
+        #expect(agent.transcript.last?.text == "Done: echo: hi")
         // Second LLM call must include the tool result message.
         let secondCall = llm.receivedMessages[1]
-        XCTAssertTrue(secondCall.contains { $0.role == "tool" && $0.content == "echo: hi" })
+        #expect(secondCall.contains { $0.role == "tool" && $0.content == "echo: hi" })
     }
 
-    @MainActor
-    func testHopLimitStopsRunawayLoop() async {
+    @Test @MainActor func hopLimitStopsRunawayLoop() async {
         let toolCall = ToolCall(function: .init(name: "echo", arguments: ["text": .string("x")]))
         let looping = ChatMessage(role: "assistant", content: "", toolCalls: [toolCall])
         let llm = MockLLM(replies: Array(repeating: looping, count: 10))
@@ -60,12 +57,11 @@ final class AgentCoreTests: XCTestCase {
 
         await agent.send("loop forever")
 
-        XCTAssertLessThanOrEqual(llm.receivedMessages.count, 5)
-        XCTAssertEqual(agent.transcript.last?.role, .assistant)
+        #expect(llm.receivedMessages.count <= 5)
+        #expect(agent.transcript.last?.role == .assistant)
     }
 
-    @MainActor
-    func testLLMErrorSurfacesInTranscript() async {
+    @Test @MainActor func llmErrorSurfacesInTranscript() async {
         struct FailingLLM: LLMClient {
             struct Down: Error, LocalizedError { var errorDescription: String? { "connection refused" } }
             func chat(messages: [ChatMessage], tools: [ToolSpec],
@@ -77,7 +73,7 @@ final class AgentCoreTests: XCTestCase {
 
         await agent.send("hello")
 
-        XCTAssertTrue(agent.transcript.last?.text.contains("connection refused") ?? false)
-        XCTAssertEqual(agent.transcript.last?.role, .error)
+        #expect(agent.transcript.last?.text.contains("connection refused") == true)
+        #expect(agent.transcript.last?.role == .error)
     }
 }
