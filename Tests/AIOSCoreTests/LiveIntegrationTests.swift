@@ -18,7 +18,7 @@ import Foundation
         let tools = ToolRegistry(tools: [AppTool(), FileTool()]).specs
         let reply = try await client.chat(messages: messages, tools: tools, onToken: { _ in })
 
-        XCTAssertEqual(reply.toolCalls?.first?.function.name, "app_control")
-        XCTAssertEqual(reply.toolCalls?.first?.function.arguments["action"], .string("launch"))
+        #expect(reply.toolCalls?.first?.function.name == "app_control")
+        #expect(reply.toolCalls?.first?.function.arguments["action"] == .string("launch"))
     }
 }
