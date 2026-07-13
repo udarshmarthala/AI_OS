@@ -2,3 +2,6 @@
 .swiftpm/
 *.xcodeproj
 DerivedData/
+.venv/
+__pycache__/
+*.egg-info/
