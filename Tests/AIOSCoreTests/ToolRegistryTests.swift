@@ -1,4 +1,5 @@
-import XCTest
+import Testing
+import Foundation
 @testable import AIOSCore
 
 struct EchoTool: Tool {
