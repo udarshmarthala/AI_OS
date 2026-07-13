@@ -13,11 +13,19 @@ public struct OllamaClient: LLMClient {
     public init(
         model: String,
         baseURL: URL = URL(string: "http://localhost:11434")!,
-        session: URLSession = .shared
+        session: URLSession? = nil
     ) {
         self.model = model
         self.baseURL = baseURL
-        self.session = session
+        // Cold model load into RAM can take minutes; default 60s timeout aborts mid-load.
+        if let session {
+            self.session = session
+        } else {
+            let config = URLSessionConfiguration.default
+            config.timeoutIntervalForRequest = 300
+            config.timeoutIntervalForResource = 600
+            self.session = URLSession(configuration: config)
+        }
     }
 
     private struct StreamChunk: Decodable {
