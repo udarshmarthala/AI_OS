@@ -1,20 +1,22 @@
-import XCTest
+import Testing
+import Foundation
 @testable import AIOSCore
 
-final class FileToolTests: XCTestCase {
-    var tmp: URL!
+// Uses a class so deinit can clean up the temp directory.
+@Suite final class FileToolTests {
+    let tmp: URL
 
-    override func setUpWithError() throws {
+    init() throws {
         tmp = FileManager.default.temporaryDirectory
             .appendingPathComponent("aios-tests-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
     }
 
-    override func tearDownWithError() throws {
+    deinit {
         try? FileManager.default.removeItem(at: tmp)
     }
 
-    func testMoveFile() async throws {
+    @Test func moveFile() async throws {
         let src = tmp.appendingPathComponent("a.txt")
         let dst = tmp.appendingPathComponent("b.txt")
         try "hello".write(to: src, atomically: true, encoding: .utf8)
