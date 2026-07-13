@@ -1,16 +1,16 @@
-import XCTest
+import Testing
+import Foundation
 @testable import AIOSCore
 
-/// Requires a running Ollama with qwen2.5:14b. Skips otherwise.
-final class LiveIntegrationTests: XCTestCase {
-    func testModelCallsAppControlForLaunchRequest() async throws {
+/// Requires a running Ollama with qwen2.5:14b. Skips otherwise (early return).
+@Suite struct LiveIntegrationTests {
+    @Test func modelCallsAppControlForLaunchRequest() async throws {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 300
         config.timeoutIntervalForResource = 300
         let client = OllamaClient(model: "qwen2.5:14b", session: URLSession(configuration: config))
-        guard await client.healthCheck() else {
-            throw XCTSkip("Ollama not running or model not pulled")
-        }
+        // swift-testing has no skip-by-throw; skip by early return if Ollama not available
+        guard await client.healthCheck() else { return }
         let messages = [
             ChatMessage(role: "system", content: AgentCore.systemPrompt),
             ChatMessage(role: "user", content: "Open the Calculator app")
