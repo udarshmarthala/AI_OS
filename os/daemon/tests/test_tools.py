@@ -112,3 +112,46 @@ async def test_missing_action(tmp_home):
     ops = FileOps(search_root=str(tmp_home))
     out = await ops.execute({})
     assert "Error" in out and "action" in out
+
+
+# --- app_launch ---
+
+from aios_daemon.tools import AppLaunch
+
+
+@pytest.fixture
+def apps_dir(tmp_path):
+    d = tmp_path / "applications"
+    d.mkdir()
+    (d / "org.gnome.TextEditor.desktop").write_text(
+        "[Desktop Entry]\nName=Text Editor\nExec=gnome-text-editor %U\nType=Application\n"
+    )
+    (d / "firefox.desktop").write_text(
+        "[Desktop Entry]\nName=Firefox\nExec=firefox %u\nType=Application\n"
+    )
+    return d
+
+
+async def test_launch_matches_by_name(apps_dir, monkeypatch):
+    calls = []
+
+    def fake_popen(cmd, **kwargs):
+        calls.append(cmd)
+
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
+    tool = AppLaunch(apps_dirs=[str(apps_dir)])
+    out = await tool.execute({"name": "text editor"})
+    assert "Launched" in out
+    assert calls[0] == ["gtk-launch", "org.gnome.TextEditor"]
+
+
+async def test_launch_unknown_app(apps_dir):
+    tool = AppLaunch(apps_dirs=[str(apps_dir)])
+    out = await tool.execute({"name": "photoshop"})
+    assert "Error" in out
+
+
+async def test_launch_lists_apps(apps_dir):
+    tool = AppLaunch(apps_dirs=[str(apps_dir)])
+    out = await tool.execute({"action": "list"})
+    assert "Firefox" in out and "Text Editor" in out

@@ -112,3 +112,48 @@ class FileOps:
                     if len(hits) >= SEARCH_CAP:
                         return "\n".join(hits)
         return "\n".join(hits) if hits else f"No files found for '{query}'"
+
+
+class AppLaunch:
+    spec = {
+        "name": "app_launch",
+        "description": "Launch an installed application by name, or list installed applications.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "description": "Application name, e.g. 'Firefox'"},
+                "action": {"type": "string", "enum": ["launch", "list"], "description": "Defaults to launch"},
+            },
+        },
+    }
+
+    DEFAULT_DIRS = ["/usr/share/applications", os.path.expanduser("~/.local/share/applications")]
+
+    def __init__(self, apps_dirs=None):
+        self.apps_dirs = apps_dirs or self.DEFAULT_DIRS
+
+    def _installed(self):
+        apps = {}  # display name -> desktop id
+        for d in self.apps_dirs:
+            for entry in sorted(Path(d).glob("*.desktop")) if Path(d).is_dir() else []:
+                name = None
+                for line in entry.read_text(errors="ignore").splitlines():
+                    if line.startswith("Name=") and name is None:
+                        name = line[5:].strip()
+                if name:
+                    apps[name] = entry.stem
+        return apps
+
+    async def execute(self, args):
+        apps = await asyncio.to_thread(self._installed)
+        if args.get("action") == "list":
+            return ", ".join(sorted(apps)) or "No applications found"
+        name = args.get("name")
+        if not name:
+            return "Error: missing 'name'"
+        wanted = name.lower()
+        for display, desktop_id in apps.items():
+            if wanted in display.lower():
+                subprocess.Popen(["gtk-launch", desktop_id])
+                return f"Launched {display}"
+        return f"Error: no installed app matches '{name}'"
