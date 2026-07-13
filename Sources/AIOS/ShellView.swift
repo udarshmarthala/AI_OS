@@ -7,6 +7,7 @@ struct ShellView: View {
     var retry: @Sendable () async -> Void
 
     @State private var input = ""
+    @StateObject private var voice = VoiceInput()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -71,6 +72,29 @@ struct ShellView: View {
         }
     }
 
+    private var micButton: some View {
+        Button {
+            voice.toggle { text in
+                input = text
+                submit()
+            }
+        } label: {
+            Image(systemName: voice.state == .recording ? "mic.fill" : "mic")
+                .font(.title2)
+                .foregroundColor(voice.state == .recording ? .red : .primary)
+        }
+        .buttonStyle(.plain)
+        .overlay(alignment: .bottom) {
+            if voice.state == .loading { Text("loading model…").font(.caption2).fixedSize().offset(y: 16) }
+            if voice.state == .transcribing { Text("transcribing…").font(.caption2).fixedSize().offset(y: 16) }
+            if voice.state == .denied {
+                Link("mic denied — open Settings",
+                     destination: URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone")!)
+                    .font(.caption2).fixedSize().offset(y: 16)
+            }
+        }
+    }
+
     private var inputBar: some View {
         HStack(spacing: 12) {
             TextField("Ask AIOS anything…", text: $input)
@@ -80,6 +104,7 @@ struct ShellView: View {
                 .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 14))
                 .onSubmit(submit)
                 .disabled(agent.isThinking)
+            micButton
             if agent.isThinking {
                 ProgressView().controlSize(.small)
             }
