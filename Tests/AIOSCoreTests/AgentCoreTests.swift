@@ -1,4 +1,5 @@
-import XCTest
+import Testing
+import Foundation
 @testable import AIOSCore
 
 /// Scripted LLM: returns queued replies in order.
