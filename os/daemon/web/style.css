@@ -16,6 +16,8 @@ body {
 .assistant { background: #ffffff14; align-self: flex-start; }
 .error { background: #e0860022; color: #e08600; align-self: flex-start; }
 .status { color: #888; font-family: monospace; font-size: 13px; }
+.confirm { background: #bf8a1a33; align-self: flex-start; }
+.confirm button { margin-left: 8px; padding: 4px 12px; cursor: pointer; }
 footer { display: flex; align-items: center; gap: 12px; padding: 20px; }
 #input {
   flex: 1; padding: 14px; font-size: 18px; color: #eee;
