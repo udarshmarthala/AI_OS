@@ -15,7 +15,7 @@ class AgentLoop:
         self.registry = registry
         self.history = [{"role": "system", "content": system_prompt}]
 
-    async def run_turn(self, text, emit):
+    async def run_turn(self, text, emit, confirm=None):
         self.history.append({"role": "user", "content": text})
 
         async def on_token(token):
@@ -38,7 +38,11 @@ class AgentLoop:
                 name = call["function"]["name"]
                 args = call["function"].get("arguments") or {}
                 await emit({"event": "tool", "name": name})
-                result = await self.registry.execute(name, args)
+                prompt = self.registry.confirm_prompt(name, args)
+                if prompt and confirm is not None and not await confirm(prompt):
+                    result = "User declined the action. Do not retry it."
+                else:
+                    result = await self.registry.execute(name, args)
                 self.history.append({"role": "tool", "content": result})
 
         await emit({"event": "done", "text": "I got stuck in a tool loop and stopped. Try rephrasing."})

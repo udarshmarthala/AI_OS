@@ -25,6 +25,12 @@ class ToolRegistry:
         except Exception as e:  # tool errors feed back to the model as strings
             return f"Error: {e}"
 
+    def confirm_prompt(self, name, args):
+        tool = self._tools.get(name)
+        if tool is None or not hasattr(tool, "confirm_prompt"):
+            return None
+        return tool.confirm_prompt(args)
+
 
 class SysInfo:
     spec = {
