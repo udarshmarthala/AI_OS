@@ -104,19 +104,33 @@ class FileOps:
             path = args.get("path")
             if not path:
                 return "Error: missing 'path'"
-            subprocess.Popen(["xdg-open", path])
+            resolved = self._resolve_inside(path)
+            if resolved is None:
+                return f"Error: '{path}' is outside the allowed directory"
+            subprocess.Popen(["xdg-open", str(resolved)])
             return f"Opened {path}"
         if action == "move":
             path, dest = args.get("path"), args.get("destination")
             if not path or not dest:
                 return "Error: move requires 'path' and 'destination'"
-            shutil.move(path, dest)
+            src = self._resolve_inside(path)
+            dst = self._resolve_inside(dest)
+            if src is None or dst is None:
+                return "Error: move is restricted to the allowed directory"
+            if dst.is_dir():
+                dst = dst / src.name
+            if dst.exists():
+                return f"Error: destination '{dst}' already exists"
+            shutil.move(str(src), str(dst))
             return f"Moved {path} -> {dest}"
         if action == "trash":
             path = args.get("path")
             if not path:
                 return "Error: missing 'path'"
-            result = subprocess.run(["gio", "trash", path], capture_output=True)
+            resolved = self._resolve_inside(path)
+            if resolved is None:
+                return f"Error: '{path}' is outside the allowed directory"
+            result = subprocess.run(["gio", "trash", str(resolved)], capture_output=True)
             if result.returncode != 0:
                 return f"Error: {result.stderr.decode().strip() or 'trash failed'}"
             return f"Trashed {path}"
