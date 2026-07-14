@@ -82,6 +82,62 @@ async def test_llm_error_emits_error_event():
     assert "connection refused" in emit.events[-1]["text"]
 
 
+class TrashTool:
+    spec = {
+        "name": "trash",
+        "description": "Trashes a file",
+        "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]},
+    }
+
+    def __init__(self):
+        self.executed = []
+
+    def confirm_prompt(self, args):
+        return f"Trash {args.get('path')}?"
+
+    async def execute(self, args):
+        self.executed.append(args)
+        return "Trashed"
+
+
+async def test_destructive_call_declined_skips_execution():
+    call = {"function": {"name": "trash", "arguments": {"path": "/home/x/notes.txt"}}}
+    llm = MockLLM([
+        {"role": "assistant", "content": "", "tool_calls": [call]},
+        {"role": "assistant", "content": "Okay, not trashing it."},
+    ])
+    tool = TrashTool()
+    loop = AgentLoop(llm=llm, registry=ToolRegistry([tool]))
+    emit = Collector()
+    prompts = []
+
+    async def confirm(prompt):
+        prompts.append(prompt)
+        return False
+
+    await loop.run_turn("trash my notes", emit, confirm=confirm)
+    assert prompts == ["Trash /home/x/notes.txt?"]
+    assert tool.executed == []
+    assert any(m["role"] == "tool" and "declined" in m["content"] for m in llm.received[1])
+
+
+async def test_destructive_call_approved_executes():
+    call = {"function": {"name": "trash", "arguments": {"path": "/home/x/notes.txt"}}}
+    llm = MockLLM([
+        {"role": "assistant", "content": "", "tool_calls": [call]},
+        {"role": "assistant", "content": "Done."},
+    ])
+    tool = TrashTool()
+    loop = AgentLoop(llm=llm, registry=ToolRegistry([tool]))
+    emit = Collector()
+
+    async def confirm(prompt):
+        return True
+
+    await loop.run_turn("trash my notes", emit, confirm=confirm)
+    assert tool.executed == [{"path": "/home/x/notes.txt"}]
+
+
 async def test_history_persists_across_turns():
     llm = MockLLM([
         {"role": "assistant", "content": "A"},
