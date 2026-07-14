@@ -10,6 +10,7 @@ from .ollama import OllamaClient
 from .tools import AppLaunch, FileOps, SysInfo, ToolRegistry
 
 WEB_DIR = Path(__file__).parent.parent / "web"
+MAX_INPUT_CHARS = 20000
 
 
 def create_app(llm=None, config=None):
@@ -32,12 +33,23 @@ def create_app(llm=None, config=None):
         async def emit(event):
             await ws.send_json(event)
 
+        async def confirm(prompt):
+            await ws.send_json({"event": "confirm", "text": prompt})
+            data = await ws.receive_json()
+            return data.get("approved") is True
+
         try:
             while True:
                 data = await ws.receive_json()
-                text = (data.get("text") or "").strip()
+                text = data.get("text")
+                if not isinstance(text, str):
+                    continue
+                text = text.strip()
+                if len(text) > MAX_INPUT_CHARS:
+                    await emit({"event": "error", "text": "Message too long."})
+                    continue
                 if text:
-                    await loop.run_turn(text, emit)
+                    await loop.run_turn(text, emit, confirm=confirm)
         except WebSocketDisconnect:
             pass
 
