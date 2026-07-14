@@ -30,6 +30,20 @@ function connect() {
       if (!currentBubble) currentBubble = addMsg("assistant", "");
       currentBubble.textContent += e.text;
       feed.scrollTop = feed.scrollHeight;
+    } else if (e.event === "confirm") {
+      const div = addMsg("confirm", e.text + " ");
+      const answer = (approved) => {
+        div.querySelectorAll("button").forEach((b) => b.remove());
+        div.textContent += approved ? "— allowed" : "— denied";
+        ws.send(JSON.stringify({ approved }));
+      };
+      const allow = document.createElement("button");
+      allow.textContent = "Allow";
+      allow.onclick = () => answer(true);
+      const deny = document.createElement("button");
+      deny.textContent = "Deny";
+      deny.onclick = () => answer(false);
+      div.append(allow, deny);
     } else if (e.event === "tool") {
       addMsg("status", `▸ ${e.name}`);
     } else if (e.event === "done") {
