@@ -76,6 +76,21 @@ class FileOps:
     def __init__(self, search_root):
         self.search_root = search_root
 
+    def confirm_prompt(self, args):
+        action = args.get("action")
+        if action == "trash":
+            return f"Put {args.get('path')} in the Trash?"
+        if action == "move":
+            return f"Move {args.get('path')} to {args.get('destination')}?"
+        return None
+
+    def _resolve_inside(self, raw):
+        # resolve() follows symlinks, so links escaping the root are caught too
+        resolved = Path(raw).resolve()
+        if not resolved.is_relative_to(Path(self.search_root).resolve()):
+            return None
+        return resolved
+
     async def execute(self, args):
         action = args.get("action")
         if not action:
