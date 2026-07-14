@@ -114,6 +114,89 @@ async def test_missing_action(tmp_home):
     assert "Error" in out and "action" in out
 
 
+# --- file_ops guardrails ---
+
+async def test_open_outside_root_rejected(tmp_home, monkeypatch):
+    calls = []
+    monkeypatch.setattr(subprocess, "Popen", lambda cmd, **kw: calls.append(cmd))
+    ops = FileOps(search_root=str(tmp_home))
+    out = await ops.execute({"action": "open", "path": "/etc/passwd"})
+    assert "Error" in out
+    assert calls == []
+
+
+async def test_move_source_outside_root_rejected(tmp_home):
+    ops = FileOps(search_root=str(tmp_home))
+    out = await ops.execute({"action": "move", "path": "/etc/passwd", "destination": str(tmp_home / "x")})
+    assert "Error" in out
+
+
+async def test_move_destination_outside_root_rejected(tmp_home):
+    ops = FileOps(search_root=str(tmp_home))
+    out = await ops.execute(
+        {"action": "move", "path": str(tmp_home / "notes.txt"), "destination": "/tmp/evil.txt"}
+    )
+    assert "Error" in out
+    assert (tmp_home / "notes.txt").exists()
+
+
+async def test_move_traversal_rejected(tmp_home):
+    ops = FileOps(search_root=str(tmp_home))
+    sneaky = str(tmp_home / "docs" / ".." / ".." / "escape.txt")
+    out = await ops.execute({"action": "move", "path": str(tmp_home / "notes.txt"), "destination": sneaky})
+    assert "Error" in out
+    assert (tmp_home / "notes.txt").exists()
+
+
+async def test_move_refuses_overwrite(tmp_home):
+    ops = FileOps(search_root=str(tmp_home))
+    dst = tmp_home / "docs" / "resume.pdf"
+    out = await ops.execute({"action": "move", "path": str(tmp_home / "notes.txt"), "destination": str(dst)})
+    assert "Error" in out
+    assert (tmp_home / "notes.txt").exists()
+    assert dst.read_text() == "x"
+
+
+async def test_trash_outside_root_rejected(tmp_home, monkeypatch):
+    calls = []
+
+    def fake_run(cmd, **kwargs):
+        calls.append(cmd)
+        return subprocess.CompletedProcess(cmd, 0, stdout=b"", stderr=b"")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    ops = FileOps(search_root=str(tmp_home))
+    out = await ops.execute({"action": "trash", "path": "/etc/hosts"})
+    assert "Error" in out
+    assert calls == []
+
+
+async def test_symlink_escape_rejected(tmp_home, monkeypatch):
+    outside = tmp_home.parent / "secret.txt"
+    outside.write_text("s")
+    link = tmp_home / "link.txt"
+    link.symlink_to(outside)
+    calls = []
+
+    def fake_run(cmd, **kwargs):
+        calls.append(cmd)
+        return subprocess.CompletedProcess(cmd, 0, stdout=b"", stderr=b"")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    ops = FileOps(search_root=str(tmp_home))
+    out = await ops.execute({"action": "trash", "path": str(link)})
+    assert "Error" in out
+    assert calls == []
+
+
+def test_confirm_prompt_for_destructive_actions(tmp_home):
+    ops = FileOps(search_root=str(tmp_home))
+    assert ops.confirm_prompt({"action": "trash", "path": "/x/y.txt"})
+    assert ops.confirm_prompt({"action": "move", "path": "/x/a", "destination": "/x/b"})
+    assert ops.confirm_prompt({"action": "search", "query": "q"}) is None
+    assert ops.confirm_prompt({"action": "open", "path": "/x/y.txt"}) is None
+
+
 # --- app_launch ---
 
 from aios_daemon.tools import AppLaunch
